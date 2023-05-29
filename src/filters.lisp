@@ -14,6 +14,12 @@
 (defclass/std filter-or ()
   ((filters)))
 
+(defclass/std filter-not ()
+  ((negated-filter)))
+
+(defclass/std completed ()
+  ())
+
 (defclass/std exact-description (tasks-filter)
   ((description)))
 
@@ -41,6 +47,16 @@
   (if (remove-if-not (lambda (filter)
 		       (matches? filter task))
 		     (filters self))
+      t
+      nil))
+
+(defmethod* matches? ((self filter-not) (task task))
+  (:returns boolean)
+  (not (matches? (negated-filter self) task)))
+
+(defmethod* matches? ((self completed) (task task))
+  (:returns boolean)
+  (if (task-completed task)
       t
       nil))
 
@@ -72,11 +88,20 @@
 
 (defmethod* matches? ((self within-n-days) (task task))
   (:returns boolean)
-  (>= (days self) (- (lt:day-of (task-date task))
-		     (lt:day-of (lt:now)))))
+  (let ((diff (- (lt:day-of (task-date task))
+		 (lt:day-of (lt:now)))))
+    (<= 0 diff)
+    (>= (days self) diff)))
 
 (defun* filter-or (&rest (filters tasks-filter))
   (make-instance 'filter-or :filters filters))
+
+(defgeneric* filter-not ((filter tasks-filter))
+  (:method (filter)
+    (make-instance 'filter-not :negated-filter filter)))
+
+(defun* completed ()
+  (make-instance 'completed))
 
 (defun* within-n-days ((days integer))
   (make-instance 'within-n-days :days days))
