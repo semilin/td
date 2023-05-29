@@ -35,6 +35,16 @@
   (:returns :void)
   (:documentation "Marks a task as completed if possible and reschedules it."))
 
+(defgeneric* uncompleted-prerequisites? ((self task))
+  (:returns :boolean)
+  (:documentation "Returns the list of uncompleted prerequisites a task has."))
+
+(defmethod* uncompleted-prerequisites? ((self task))
+  (:returns list)
+  (remove-if (lambda (prereq)
+		   (task-completed (car (sort-tasks-time (filter *tasks* (exact-description prereq))))))
+		 (task-prerequisites self)))
+
 (define-condition locked-completion-attempt (error)
   ((task :initarg :task
 	 :initform nil
@@ -46,9 +56,7 @@
 
 (defmethod* complete ((self task) &optional (recur? t))
   (:returns :void)
-  (if (remove-if (lambda (prereq)
-		   (task-completed (car (sort-tasks-time (filter *tasks* (exact-description prereq))))))
-		 (task-prerequisites self))
+  (if (uncompleted-prerequisites? self)
       (error 'locked-completion-attempt :task self))
   (setf (slot-value self 'completed) (lt:now))
   (if (and recur? (task-schedule self))
@@ -133,13 +141,44 @@
   (:returns has-tags)
   (make-instance 'has-tags :tags tags))
 
+(defclass/std completable (tasks-filter)
+  ())
+
+(defmethod* matches? ((self completable) (task task))
+  (:returns boolean)
+  (not (uncompleted-prerequisites? task)))
+
+(defun completable ()
+  (make-instance 'completable))
+
+(defclass/std overdue (tasks-filter)
+  (()))
+
+(defmethod* matches? ((self overdue) (task task))
+  (:returns boolean)
+  (lt:timestamp> (lt:now) (task-date task)))
+
+(defun overdue ()
+  (make-instance 'overdue))
+
+(defclass/std within-n-days (tasks-filter)
+  ((days)))
+
+(defmethod* matches? ((self within-n-days) (task task))
+  (:returns boolean)
+  (>= (days self) (- (lt:day-of (task-date task))
+		     (lt:day-of (lt:now)))))
+
+(defun* within-n-days ((days integer))
+  (make-instance 'within-n-days :days days))
+
 (defun* filter ((tasks list) &rest (filters tasks-filter))
   (:returns list)
-  (remove-if-not (lambda (task)
-		   (remove-if-not (lambda (f)
-				    (matches? f task))
-				  filters))
-		 tasks))
+  (remove-if (lambda (task)
+	       (remove-if (lambda (f)
+			    (matches? f task))
+			  filters))
+	     tasks))
 
 (defun* sort-tasks-time ((tasks list))
   (:returns list)
