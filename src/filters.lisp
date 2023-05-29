@@ -11,6 +11,9 @@
 (defclass/std tasks-filter ()
   ())
 
+(defclass/std filter-or ()
+  ((filters)))
+
 (defclass/std exact-description (tasks-filter)
   ((description)))
 
@@ -32,6 +35,14 @@
 (defgeneric* matches? ((self tasks-filter) (task task))
   (:returns boolean)
   (:documentation "Returns t if task matches the filter."))
+
+(defmethod* matches? ((self filter-or) (task task))
+  (:returns boolean)
+  (if (remove-if-not (lambda (filter)
+		       (matches? filter task))
+		     (filters self))
+      t
+      nil))
 
 (defmethod* matches? ((self exact-description) (task task))
   (string= (description self) (task-description task)))
@@ -63,6 +74,9 @@
   (:returns boolean)
   (>= (days self) (- (lt:day-of (task-date task))
 		     (lt:day-of (lt:now)))))
+
+(defun* filter-or (&rest (filters tasks-filter))
+  (make-instance 'filter-or :filters filters))
 
 (defun* within-n-days ((days integer))
   (make-instance 'within-n-days :days days))
