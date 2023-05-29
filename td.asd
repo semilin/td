@@ -6,6 +6,6 @@
   :license  "Specify license here"
   :version "0.0.1"
   :serial t
-  :depends-on (:local-time :defclass-std :defstar :iterate :binding-arrows :ubiquitous)
+  :depends-on (:local-time :defclass-std :defstar :iterate :binding-arrows :ubiquitous :cl-ppcre)
   :components ((:file "package")
                (:file "td")))

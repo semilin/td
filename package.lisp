@@ -2,4 +2,5 @@
 
 (defpackage #:td
   (:use #:cl #:defstar #:defclass-std #:iterate #:binding-arrows)
-  (:local-nicknames (:lt :local-time)))
+  (:local-nicknames (:lt :local-time)
+		    (:re :cl-ppcre)))
